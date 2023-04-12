@@ -52,12 +52,15 @@ df_reg <- full_join(IEA_EB,SSP2) %>%
   select(-value) %>% 
   mutate(intensity=na_locf(intensity)) %>% 
   mutate(value_Lv1=ind*intensity) %>% 
-  mutate(value_Lv2=case_when(Year%in%2005:2020 ~ intensity,
+  mutate(intensity_Lv2=case_when(Year%in%2005:2020 ~ intensity,
                              Year==2050 ~ intensity*0.8),
-         value_Lv3=case_when(Year%in%2005:2020 ~ intensity,
+         intensity_Lv3=case_when(Year%in%2005:2020 ~ intensity,
                              Year==2050 ~ intensity*0.5)) %>% 
-  mutate(value_Lv2=na_interpolation(value_Lv2),
-         value_Lv3=na_interpolation(value_Lv3)) %>% 
+  mutate(intensity_Lv2=na_interpolation(intensity_Lv2),
+         intensity_Lv3=na_interpolation(intensity_Lv3)) %>% 
+  mutate(value_Lv2=ind*intensity_Lv2,
+         value_Lv3=ind*intensity_Lv3) %>% 
+  select(-starts_with('intensity_')) %>% 
   pivot_longer(cols=c(value_Lv1,value_Lv2,value_Lv3),names_to='Sv',values_to='value',names_prefix='value_') %>% 
   select(-ind,-intensity)
 
@@ -69,3 +72,4 @@ g <- df_reg %>%
   geom_line(aes(x=Year,y=value,color=Sv)) +
   scale_y_continuous(limits=c(0,NA))
 plot(g)
+
