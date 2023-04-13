@@ -201,7 +201,7 @@ IEA_EB_DEM <- bind_rows(IEA_EB_IND,IEA_EB_TRA,IEA_EB_COM,IEA_EB_RES)
 
 
 
-### Run model ###
+### Energy sector ###
 
 # Final energy ------------------------------------------------------------
 
@@ -303,7 +303,7 @@ PRM_IND <- SEC_IND %>%
 
 EMF_PRM <- data.frame(PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
                             'NUC','BMS','BMSX','HYD','GEO','WIN','PV'),
-                      EMF=c(94.6,94.6*0.05,77.4,77.4*0.05,56.1,56.1*0.05,0,0,0,0,0,0,0))
+                      EMF=c(94.6,94.6*0.05,77.4,77.4*0.05,56.1,56.1*0.05,0,0,0,0,0,0,0)) # !endogenous parameter
 
 
 # Emission  ---------------------------------------------------------------
@@ -312,3 +312,38 @@ EMF_PRM <- data.frame(PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
 EMI_IND <- PRM_IND %>% 
   left_join(EMF_PRM) %>% 
   mutate(EMI=PES*EMF/1000)
+
+
+### Non-energy sector ###
+
+# Cement sector
+EMI_CEM <- rgdx.param(paste0(ddir,'emissions_JPN.gdx'),'emi_jpn') %>% 
+  filter(VAR=='Emi_CO2_Ene_Dem_Ind_Cem') %>% 
+  select(Y,emi_jpn) %>% 
+  rename(Year=Y,EMI_CEM=emi_jpn) %>% 
+  mutate(across(where(is.factor),~as.character(.))) %>% 
+  mutate(Year=as.numeric(Year)) %>% 
+  full_join(SSP2_POP) %>% 
+  filter(Year>=2010) %>%
+  mutate(intensity=EMI_CEM/POP) %>%
+  select(-EMI_CEM) %>% 
+  mutate(intensity=na_locf(intensity)) %>% 
+  mutate(EMI_CEM=POP*intensity)
+
+# Waste sector
+EMI_WASTE0 <- read_xlsx(paste0(ddir,'L5-7gas_2022_gioweb_ver1.1.xlsx'),sheet=4) %>% 
+  slice(3,55) %>% 
+  select(-c(1:10)) 
+colnames(EMI_WASTE0) <- EMI_WASTE0[1,]
+EMI_WASTE <- EMI_WASTE0 %>% 
+  slice(-1) %>% select(1:31) %>% 
+  pivot_longer(cols=everything(),names_to='Year',values_to='EMI_WASTE',names_transform=as.numeric) %>% 
+  full_join(SSP2_POP) %>% 
+  filter(Year>=2010) %>%
+  mutate(intensity=EMI_WASTE/POP) %>%
+  select(-EMI_WASTE) %>% 
+  mutate(intensity=na_locf(intensity)) %>% 
+  mutate(EMI_WASTE=POP*intensity)
+
+# LULUCF sector
+EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-54.3) # from GIO. value of 2020. Mt-CO2/yr
