@@ -25,8 +25,7 @@ IEA_EB <- IEA_EB_IND <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>%
   slice(-1) %>% rename(Sector=1,Year=2) %>% 
   mutate(across(-1,~as.numeric(.))) %>% 
   filter(Year%in%2010:2020) %>% 
-  select(Sector,Year,Total) %>% rename(value=Total) %>% 
-  complete(Year=2010:2050)
+  select(Sector,Year,Total) %>% rename(value=Total)
 
 # SSP2 indicator -GDP
 SSP2_GDP <- rgdx.param(paste0(ddir,'serv_global_SSP2.gdx'),'ind_t') %>% 
@@ -61,7 +60,6 @@ SSP2_RESFLOOR <- rgdx.param(paste0(ddir,'SSP2_JPN.gdx'),'ind_t') %>%  # billion 
   mutate(Year=as.numeric(Year)) %>% 
   filter(Sv=='Residential_floor_space',Year<=2050) %>% 
   select(-Sv)
-
 
 
 ### Future energy demand estimation ###
@@ -197,4 +195,120 @@ g <- df_RES %>%
 plot(g)
 
 
+# Summarise ---------------------------------------------------------------
 
+IEA_EB_DEM <- bind_rows(IEA_EB_IND,IEA_EB_TRA,IEA_EB_COM,IEA_EB_RES)
+
+
+
+### Run model ###
+
+# Final energy ------------------------------------------------------------
+
+DEF_FIN <- data.frame(FIN=c('COL','OIL','GAS','BMS','ELE'),
+                      SEC=c('COL','OIL','GAS','BMS','ELE')) %>% 
+  mutate(FIN=factor(FIN,levels=c('ELE','BMS','GAS','OIL','COL')),
+         SEC=factor(SEC,levels=c('ELE','BMS','GAS','OIL','COL')))
+
+ENE_IND <- data.frame(DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+ENE_TRA <- data.frame(DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+ENE_COM <- data.frame(DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+ENE_RES <- data.frame(DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+
+# Example -industry sector
+FIN_IND <- df_IND %>% 
+  full_join(foreach(i=2010:2050,.combine=rbind) %do% data.frame(Year=i,ENE_IND)) %>% 
+  mutate(FEC=value*SHR_FIN) %>% 
+  select(-value,-SHR_FIN)
+
+g <- FIN_IND %>% 
+  ggplot() +
+  geom_area(aes(x=Year,y=FEC,fill=FIN)) +
+  scale_fill_brewer(palette='Set3') +
+  facet_wrap(vars(Sv))
+plot(g)
+
+
+# Distribution loss -------------------------------------------------------
+
+DIS_LOSS <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
+  slice(-1) %>% rename(Sector=1,Year=2) %>% 
+  mutate(across(-1,~as.numeric(.))) %>% 
+  filter(Year%in%2010:2020) %>% 
+  select(Sector,Year,Electricity) %>% rename(value=Electricity) %>% 
+  filter(Sector%in%c('Statistical differences',
+                     'Main activity producer electricity plants',
+                     'Autoproducer electricity plants',
+                     'Electric boilers',
+                     'Energy industry own use',
+                     'Losses')) %>% 
+  pivot_wider(names_from=Sector,values_from=value) %>% 
+  mutate(TOTAL_GEN=`Statistical differences`+`Main activity producer electricity plants`+`Autoproducer electricity plants`,
+         TOTAL_LOSS=`Electric boilers`+`Energy industry own use`+`Losses`) %>% 
+  transmute(Year,ELE=(TOTAL_GEN+TOTAL_LOSS)/TOTAL_GEN) %>% 
+  mutate(COL=1,OIL=1,GAS=1,BMS=1) %>% 
+  complete(Year=2010:2050) %>% 
+  mutate(across(-Year,~na_locf(.))) %>% 
+  pivot_longer(cols=-Year,names_to='FIN',values_to='DIS_LOSS')
+
+
+# Power generation --------------------------------------------------------
+
+DEF_SEC <- data.frame(PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
+                            'NUC','BMS','BMSX','HYD','GEO','WIN','PV'),
+                      SHR_SEC=c(0.1,0,0.1,0,0.3,0,0.1,0,0,0.1,0,0.2,0.1),  # ! exogenous parameter
+                      SEC=c('ELE')) %>%
+  bind_rows(data.frame(PRM=c('COL','OIL','GAS','BMS'),
+                       SHR_SEC=1,
+                       SEC=c('COL','OIL','GAS','BMS')))
+
+# Example -industry sector
+SEC_IND <- FIN_IND %>% 
+  left_join(DIS_LOSS) %>% 
+  left_join(DEF_SEC) %>% 
+  mutate(SEP=FEC/DIS_LOSS*SHR_SEC)
+  
+
+# Power generation efficiency ---------------------------------------------
+
+GEN_EFF <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
+  slice(-1) %>% rename(Sector=1,Year=2) %>% 
+  mutate(across(-1,~as.numeric(.))) %>% 
+  filter(Year%in%2010:2020,Sector=='Memo: Efficiency of electricity only plants (main and auto) (%)') %>% 
+  select(2,3,6,8:11,13) %>% 
+  rename(COL=2,OIL=3,GAS=4,NUC=5,HYD=6,GEO=7,BMS=8) %>% 
+  mutate(HYD=1,WIN=1,PV=1,COLX=COL,OILX=OIL,GASX=GAS,BMSX=BMS) %>% 
+  complete(Year=2010:2050) %>% 
+  mutate(across(-Year,~na_locf(.))) %>% 
+  pivot_longer(cols=-Year,names_to='PRM',values_to='GEN_EFF') %>% 
+  mutate(GEN_EFF=GEN_EFF/100,SEC='ELE')
+
+OTH_EFF <- data.frame(PRM=c('COL','OIL','GAS','BMS'),SEC=c('COL','OIL','GAS','BMS'),Year=2010) %>% 
+  group_by(PRM,SEC) %>% 
+  complete(Year=2010:2050) %>% 
+  mutate(GEN_EFF=1)
+
+PRM_EFF <- bind_rows(GEN_EFF,OTH_EFF)
+
+
+# Primary energy supply ---------------------------------------------------
+
+# Example -industry sector
+PRM_IND <- SEC_IND %>% 
+  left_join(PRM_EFF) %>% 
+  mutate(PES=SEP/GEN_EFF)
+
+
+# Emission factor ---------------------------------------------------------
+
+EMF_PRM <- data.frame(PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
+                            'NUC','BMS','BMSX','HYD','GEO','WIN','PV'),
+                      EMF=c(94.6,94.6*0.05,77.4,77.4*0.05,56.1,56.1*0.05,0,0,0,0,0,0,0))
+
+
+# Emission  ---------------------------------------------------------------
+
+# Example -industry sector
+EMI_IND <- PRM_IND %>% 
+  left_join(EMF_PRM) %>% 
+  mutate(EMI=PES*EMF/1000)
