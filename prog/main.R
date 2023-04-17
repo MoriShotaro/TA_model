@@ -36,14 +36,40 @@ IEA_EB_SHR <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>%
             COL=`Coal and coal products`,
             OIL=`Crude, NGL and feedstocks`+`Oil products`,
             GAS=`Natural gas`,
-            GEO=`Geothermal`,
-            SOL=`Solar/wind/other`,
             BMS=`Biofuels and waste`,
-            ELE=`Electricity`,
-            HET=`Heat`,
-            Total) %>% 
-  mutate(across(-c(Sector,Year),~./Total)) %>% select(-Total) %>% 
+            ELE=`Electricity`) %>% 
+  mutate(across(-c(Sector,Year),~./(COL+OIL+GAS+BMS+ELE))) %>%
   pivot_longer(cols=-c(Sector,Year),names_to='FIN',values_to='SHR_FIN')
+
+IEA_EB_SHR_ELE1 <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
+  slice(-1) %>% rename(Sector=1,Year=2) %>% 
+  mutate(across(-1,~as.numeric(.))) %>% 
+  filter(Year%in%2010:2020,Sector%in%c('Electricity output (GWh)')) %>%
+  transmute(Sector,Year,
+            COL=`Coal and coal products`,
+            OIL=`Crude, NGL and feedstocks`+`Oil products`,
+            GAS=`Natural gas`,
+            NUC=`Nuclear`,
+            HYD=`Hydro`,
+            GEO=`Geothermal`,
+            BMS=`Biofuels and waste`)
+
+IEA_EB_SHR_ELE2 <- read_csv(paste0(ddir,'IEA_EB_ELE.csv')) %>% 
+  slice(-1) %>% rename(Sector=1,Year=2) %>% 
+  mutate(across(-1,~as.numeric(.))) %>% 
+  filter(Year%in%2010:2020,Sector%in%c('Electricity output (GWh)')) %>% 
+  transmute(Sector,Year,
+            PV=`Solar photovoltaics`,
+            WIN=`Wind`)
+
+IEA_EB_SHR_ELE <- full_join(IEA_EB_SHR_ELE1,IEA_EB_SHR_ELE2) %>% 
+  mutate(across(-c(Sector,Year),~./(COL+OIL+GAS+NUC+HYD+GEO+BMS+PV+WIN)),
+         COLX=0,OILX=0,GASX=0,BMSX=0) %>% 
+  pivot_longer(cols=-c(Sector,Year),names_to='PRM',values_to='SHR_SEC') %>% 
+  mutate(SEC='ELE') %>% 
+  select(Year,PRM,SEC,SHR_SEC) %>% 
+  bind_rows(foreach(i=2010:2020,.combine=rbind) %do%
+              data.frame(Year=i,PRM=c('COL','OIL','GAS','BMS'),SEC=c('COL','OIL','GAS','BMS'),SHR_SEC=1))
 
 # SSP2 indicator -GDP
 SSP2_GDP <- rgdx.param(paste0(ddir,'serv_global_SSP2.gdx'),'ind_t') %>% 
@@ -228,25 +254,32 @@ IEA_EB_DEM <- bind_rows(df_IND,df_TRA,df_COM,df_RES)
 # Final energy ------------------------------------------------------------
 
 # Define
-DEF_FIN <- data.frame(FIN=c('COL','OIL','GAS','BMS','GEO','SOL','ELE','HET'),
-                      SEC=c('COL','OIL','GAS','BMS','GEO','SOL','ELE','HET')) %>% 
-  mutate(FIN=factor(FIN,levels=c('COL','OIL','GAS','BMS','GEO','SOL','ELE','HET')),
-         SEC=factor(SEC,levels=c('COL','OIL','GAS','BMS','GEO','SOL','ELE','HET')))
+DEF_FIN <- data.frame(FIN=c('COL','OIL','GAS','BMS','ELE'),
+                      SEC=c('COL','OIL','GAS','BMS','ELE')) %>% 
+  mutate(FIN=factor(FIN,levels=c('COL','OIL','GAS','BMS','ELE')),
+         SEC=factor(SEC,levels=c('COL','OIL','GAS','BMS','ELE')))
 
 # Historical energy share
 SHR_HIS <- IEA_EB_SHR %>% 
   mutate(SEC=FIN) %>% 
   select(Sector,Year,FIN,SEC,SHR_FIN)
 
+# Share in 2030
+SHR_IND_2030 <- data.frame(Sector='Industry',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_TRA_2030 <- data.frame(Sector='Transport',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_COM_2030 <- data.frame(Sector='Residential',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_RES_2030 <- data.frame(Sector='Commercial and public services',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_2030 <- bind_rows(SHR_IND_2030,SHR_TRA_2030,SHR_COM_2030,SHR_RES_2030)
+
 # Share in 2050
-ENE_IND <- data.frame(Sector='Industry',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-ENE_TRA <- data.frame(Sector='Transport',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-ENE_COM <- data.frame(Sector='Residential',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-ENE_RES <- data.frame(Sector='Commercial and public services',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_2050 <- bind_rows(ENE_IND,ENE_TRA,ENE_COM,ENE_RES)
+SHR_IND_2050 <- data.frame(Sector='Industry',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_TRA_2050 <- data.frame(Sector='Transport',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_COM_2050 <- data.frame(Sector='Residential',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_RES_2050 <- data.frame(Sector='Commercial and public services',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_2050 <- bind_rows(SHR_IND_2050,SHR_TRA_2050,SHR_COM_2050,SHR_RES_2050)
 
 # Interpolation share
-SHR_FIN <- bind_rows(SHR_HIS,SHR_2050) %>% 
+SHR_FIN <- bind_rows(SHR_HIS,SHR_2030,SHR_2050) %>% 
   group_by(Sector,FIN,SEC) %>% 
   complete(Year=c(2010:2050)) %>% 
   mutate(SHR_FIN=na_interpolation(SHR_FIN))
@@ -290,13 +323,39 @@ DIS_LOSS <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>%
 
 # Power generation --------------------------------------------------------
 
-DEF_SEC <- data.frame(PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
+# Historical energy share
+SHR_HIS <- IEA_EB_SHR %>% 
+  mutate(SEC=FIN) %>% 
+  select(Sector,Year,FIN,SEC,SHR_FIN)
+
+# Share in 2030
+SHR_SEC_2030 <- data.frame(Year=2030,
+                      PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
                             'NUC','BMS','BMSX','HYD','GEO','WIN','PV'),
-                      SHR_SEC=c(0.1,0,0.1,0,0.3,0,0.1,0,0,0.1,0,0.2,0.1),  # ! exogenous parameter
-                      SEC=c('ELE')) %>%
-  bind_rows(data.frame(PRM=c('COL','OIL','GAS','BMS'),
-                       SHR_SEC=1,
-                       SEC=c('COL','OIL','GAS','BMS')))
+                      SEC=c('ELE'),
+                      SHR_SEC=c(0.1,0,0.1,0,0.3,0,0.1,0,0,0.1,0,0.2,0.1)) %>%   # ! exogenous parameter
+  bind_rows(data.frame(Year=2030,
+                       PRM=c('COL','OIL','GAS','BMS'),
+                       SEC=c('COL','OIL','GAS','BMS'),
+                       SHR_SEC=1))
+
+# Share in 2050
+SHR_SEC_2050 <- data.frame(Year=2050,
+                      PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
+                            'NUC','BMS','BMSX','HYD','GEO','WIN','PV'),
+                      SEC=c('ELE'),
+                      SHR_SEC=c(0.1,0,0.1,0,0.3,0,0.1,0,0,0.1,0,0.2,0.1)) %>%   # ! exogenous parameter
+  bind_rows(data.frame(Year=2050,
+                       PRM=c('COL','OIL','GAS','BMS'),
+                       SEC=c('COL','OIL','GAS','BMS'),
+                       SHR_SEC=1))
+
+# Interpolation share
+SHR_SEC <- bind_rows(IEA_EB_SHR_ELE,SHR_SEC_2030,SHR_SEC_2050) %>% 
+  group_by(PRM,SEC) %>% 
+  complete(Year=c(2010:2050)) %>% 
+  mutate(SHR_SEC=na_interpolation(SHR_SEC))
+
 
 # Example -industry sector
 SEC_IND <- FIN_IND %>% 
@@ -339,7 +398,7 @@ PRM_IND <- SEC_IND %>%
 
 EMF_PRM <- data.frame(PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
                             'NUC','BMS','BMSX','HYD','GEO','WIN','PV'),
-                      EMF=c(94.6,94.6*0.05,77.4,77.4*0.05,56.1,56.1*0.05,0,0,0,0,0,0,0)) # !endogenous parameter
+                      EMF=c(94.6,94.6*0.05,77.4,77.4*0.05,56.1,56.1*0.05,0,-100*0.95,0,0,0,0,0)) # !endogenous parameter
 
 
 # Emission  ---------------------------------------------------------------
@@ -383,3 +442,4 @@ EMI_WASTE <- EMI_WASTE0 %>%
 
 # LULUCF sector
 EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-54.3) # from GIO. value of 2020. Mt-CO2/yr
+
