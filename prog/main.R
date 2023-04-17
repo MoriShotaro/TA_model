@@ -9,6 +9,7 @@ library(stringr)
 library(gdxrrw)
 library(imputeTS)
 library(foreach)
+library(openxlsx)
 
 
 # Setting -----------------------------------------------------------------
@@ -16,6 +17,7 @@ library(foreach)
 root <- getwd()
 ddir <- paste0(root,'/data/')
 odir <- paste0(root,'/output/')
+xdir <- paste0(root,'/xlsx/')
 
 
 ### Input data ###
@@ -351,3 +353,9 @@ EMI_WASTE <- EMI_WASTE0 %>%
 
 # LULUCF sector
 EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-54.3) # from GIO. value of 2020. Mt-CO2/yr
+
+
+# output ------------------------------------------------------------------
+
+SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP)
+write.xlsx(SSP2_OUT, file = paste0(xdir,'data.xlsx'))
