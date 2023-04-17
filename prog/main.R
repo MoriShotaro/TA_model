@@ -70,8 +70,9 @@ SSP2_RESFLOOR <- rgdx.param(paste0(ddir,'SSP2_JPN.gdx'),'ind_t') %>%  # billion 
 IEA_EB_IND <- IEA_EB %>% 
   filter(Sector=='Industry')
 
-#  Future extension
+# Industry Final Energy Consumption in TJ
 df_IND <- full_join(IEA_EB_IND,SSP2_GDP) %>% 
+  replace_na(list(Sector='Industry')) %>% 
   mutate(intensity=value/GDP) %>% 
   select(-value) %>% 
   mutate(intensity=na_locf(intensity)) %>% 
@@ -104,7 +105,8 @@ IEA_EB_TRA <- IEA_EB %>%
   filter(Sector=='Transport')
 
 #  Future extension
-df_TRA <- full_join(IEA_EB_TRA,SSP2_POP) %>% 
+df_TRA <- full_join(IEA_EB_TRA,SSP2_POP) %>%
+  replace_na(list(Sector='Transport')) %>%
   mutate(intensity=value/POP) %>% 
   select(-value) %>% 
   mutate(intensity=na_locf(intensity)) %>% 
@@ -136,8 +138,9 @@ IEA_EB_COM <- IEA_EB %>%
   filter(Sector=='Commercial and public services')
 
 # Future extension
-df_COM <- full_join(IEA_EB_COM,SSP2_COMFLOOR) %>% 
-  transmute(Year,value=value/COMFLOOR) %>% 
+df_COM <- full_join(IEA_EB_COM,SSP2_COMFLOOR) %>%
+  replace_na(list(Sector='Commercial and public services')) %>%
+  transmute(Sector,Year,value=value/COMFLOOR) %>% 
   full_join(SSP2_GDP) %>% 
   mutate(intensity=value/GDP) %>% 
   select(-value) %>% 
@@ -171,6 +174,7 @@ IEA_EB_RES <- IEA_EB %>%
 
 # Future extension
 df_RES <- full_join(IEA_EB_RES,SSP2_RESFLOOR) %>% 
+  replace_na(list(Sector='Residential')) %>%
   mutate(intensity=value/RESFLOOR) %>% 
   select(-value) %>% 
   mutate(intensity=na_locf(intensity)) %>% 
@@ -197,7 +201,7 @@ plot(g)
 
 # Summarise ---------------------------------------------------------------
 
-IEA_EB_DEM <- bind_rows(IEA_EB_IND,IEA_EB_TRA,IEA_EB_COM,IEA_EB_RES)
+IEA_EB_DEM <- bind_rows(df_IND,df_TRA,df_COM,df_RES)
 
 
 
