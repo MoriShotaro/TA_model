@@ -21,11 +21,29 @@ odir <- paste0(root,'/output/')
 ### Input data ###
 
 # IEA Energy Balance
-IEA_EB <- IEA_EB_IND <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
+IEA_EB <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
   slice(-1) %>% rename(Sector=1,Year=2) %>% 
   mutate(across(-1,~as.numeric(.))) %>% 
   filter(Year%in%2010:2020) %>% 
   select(Sector,Year,Total) %>% rename(value=Total)
+
+# IEA Energy Balance -Historical share
+IEA_EB_SHR <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
+  slice(-1) %>% rename(Sector=1,Year=2) %>% 
+  mutate(across(-1,~as.numeric(.))) %>% 
+  filter(Year%in%2010:2020,Sector%in%c('Industry','Transport','Residential','Commercial and public services')) %>%
+  transmute(Sector,Year,
+            COL=`Coal and coal products`,
+            OIL=`Crude, NGL and feedstocks`+`Oil products`,
+            GAS=`Natural gas`,
+            GEO=`Geothermal`,
+            SOL=`Solar/wind/other`,
+            BMS=`Biofuels and waste`,
+            ELE=`Electricity`,
+            HET=`Heat`,
+            Total) %>% 
+  mutate(across(-c(Sector,Year),~./Total)) %>% select(-Total) %>% 
+  pivot_longer(cols=-c(Sector,Year),names_to='FIN',values_to='SHR_FIN')
 
 # SSP2 indicator -GDP
 SSP2_GDP <- rgdx.param(paste0(ddir,'serv_global_SSP2.gdx'),'ind_t') %>% 
@@ -209,19 +227,33 @@ IEA_EB_DEM <- bind_rows(df_IND,df_TRA,df_COM,df_RES)
 
 # Final energy ------------------------------------------------------------
 
-DEF_FIN <- data.frame(FIN=c('COL','OIL','GAS','BMS','ELE'),
-                      SEC=c('COL','OIL','GAS','BMS','ELE')) %>% 
-  mutate(FIN=factor(FIN,levels=c('ELE','BMS','GAS','OIL','COL')),
-         SEC=factor(SEC,levels=c('ELE','BMS','GAS','OIL','COL')))
+# Define
+DEF_FIN <- data.frame(FIN=c('COL','OIL','GAS','BMS','GEO','SOL','ELE','HET'),
+                      SEC=c('COL','OIL','GAS','BMS','GEO','SOL','ELE','HET')) %>% 
+  mutate(FIN=factor(FIN,levels=c('COL','OIL','GAS','BMS','GEO','SOL','ELE','HET')),
+         SEC=factor(SEC,levels=c('COL','OIL','GAS','BMS','GEO','SOL','ELE','HET')))
 
-ENE_IND <- data.frame(DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-ENE_TRA <- data.frame(DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-ENE_COM <- data.frame(DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-ENE_RES <- data.frame(DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+# Historical energy share
+SHR_HIS <- IEA_EB_SHR %>% 
+  mutate(SEC=FIN) %>% 
+  select(Sector,Year,FIN,SEC,SHR_FIN)
+
+# Share in 2050
+ENE_IND <- data.frame(Sector='Industry',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+ENE_TRA <- data.frame(Sector='Transport',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+ENE_COM <- data.frame(Sector='Residential',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+ENE_RES <- data.frame(Sector='Commercial and public services',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_2050 <- bind_rows(ENE_IND,ENE_TRA,ENE_COM,ENE_RES)
+
+# Interpolation share
+SHR_FIN <- bind_rows(SHR_HIS,SHR_2050) %>% 
+  group_by(Sector,FIN,SEC) %>% 
+  complete(Year=c(2010:2050)) %>% 
+  mutate(SHR_FIN=na_interpolation(SHR_FIN))
 
 # Example -industry sector
 FIN_IND <- df_IND %>% 
-  full_join(foreach(i=2010:2050,.combine=rbind) %do% data.frame(Year=i,ENE_IND)) %>% 
+  full_join(SHR_FIN %>% filter(Sector=='Industry')) %>% 
   mutate(FEC=value*SHR_FIN) %>% 
   select(-value,-SHR_FIN)
 
