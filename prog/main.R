@@ -140,6 +140,12 @@ g <- df_IND %>%
   scale_y_continuous(limits=c(0,NA))
 plot(g)
 
+# For output
+output_IND <- full_join(IEA_EB_IND,SSP2_GDP) %>% 
+  replace_na(list(Sector='Industry')) %>% 
+  mutate(intensity=value/GDP) %>% 
+  select(-value,-GDP) %>% 
+  drop_na()
 
 
 # Transport sector --------------------------------------------------------
@@ -173,6 +179,13 @@ g <- df_TRA %>%
   geom_line(aes(x=Year,y=value,color=Sv)) +
   scale_y_continuous(limits=c(0,NA))
 plot(g)
+
+# For output
+output_TRA <- full_join(IEA_EB_TRA,SSP2_POP) %>% 
+  replace_na(list(Sector='Transport')) %>% 
+  mutate(intensity=value/POP) %>% 
+  select(-value,-POP) %>% 
+  drop_na()
 
 
 # Commercial sector -------------------------------------------------------
@@ -209,6 +222,13 @@ g <- df_COM %>%
   scale_y_continuous(limits=c(0,NA))
 plot(g)
 
+# For output
+output_COM <- full_join(IEA_EB_COM,SSP2_GDP) %>% 
+  full_join(SSP2_COMFLOOR) %>% 
+  replace_na(list(Sector='Commercial and public services')) %>% 
+  transmute(Sector,Year,intensity=value/GDP/COMFLOOR) %>% 
+  drop_na()
+
 
 # Residential sector ------------------------------------------------------
 
@@ -242,6 +262,11 @@ g <- df_RES %>%
   scale_y_continuous(limits=c(0,NA))
 plot(g)
 
+# For output
+output_RES <- full_join(IEA_EB_RES,SSP2_POP) %>% 
+  replace_na(list(Sector='Residential')) %>% 
+  transmute(Sector,Year,intensity=value/POP) %>% 
+  drop_na()
 
 # Summarise ---------------------------------------------------------------
 
