@@ -473,5 +473,6 @@ EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-54.3) # from GIO. value of 2
 
 # output ------------------------------------------------------------------
 
-SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP,COMFLOOR=SSP2_COMFLOOR,iIND=output_IND,iTRA=output_TRA,iCOM=output_COM,iRES=output_RES)
+SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP,COMFLOOR=SSP2_COMFLOOR,iIND=output_IND,iTRA=output_TRA,iCOM=output_COM,iRES=output_RES,
+                 sIND=filter(SHR_HIS,Sector=='Industry'))
 write.xlsx(SSP2_OUT, file = paste0(xdir,'data.xlsx'))
