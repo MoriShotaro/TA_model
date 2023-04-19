@@ -294,15 +294,15 @@ SHR_HIS <- IEA_EB_SHR %>%
 # Share in 2030
 SHR_IND_2030 <- data.frame(Sector='Industry',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
 SHR_TRA_2030 <- data.frame(Sector='Transport',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_COM_2030 <- data.frame(Sector='Residential',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_RES_2030 <- data.frame(Sector='Commercial and public services',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_COM_2030 <- data.frame(Sector='Commercial and public services',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_RES_2030 <- data.frame(Sector='Residential',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
 SHR_2030 <- bind_rows(SHR_IND_2030,SHR_TRA_2030,SHR_COM_2030,SHR_RES_2030)
 
 # Share in 2050
 SHR_IND_2050 <- data.frame(Sector='Industry',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
 SHR_TRA_2050 <- data.frame(Sector='Transport',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_COM_2050 <- data.frame(Sector='Residential',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_RES_2050 <- data.frame(Sector='Commercial and public services',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_COM_2050 <- data.frame(Sector='Commercial and public services',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
+SHR_RES_2050 <- data.frame(Sector='Residential',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
 SHR_2050 <- bind_rows(SHR_IND_2050,SHR_TRA_2050,SHR_COM_2050,SHR_RES_2050)
 
 # Interpolation share
@@ -347,6 +347,22 @@ DIS_LOSS <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>%
   mutate(across(-Year,~na_locf(.))) %>% 
   pivot_longer(cols=-Year,names_to='FIN',values_to='DIS_LOSS')
 
+output_LOSS <- DIS_LOSS <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
+  slice(-1) %>% rename(Sector=1,Year=2) %>% 
+  mutate(across(-1,~as.numeric(.))) %>% 
+  filter(Year%in%2010:2020) %>% 
+  select(Sector,Year,Electricity) %>% rename(value=Electricity) %>% 
+  filter(Sector%in%c('Statistical differences',
+                     'Main activity producer electricity plants',
+                     'Autoproducer electricity plants',
+                     'Electric boilers',
+                     'Energy industry own use',
+                     'Losses')) %>% 
+  pivot_wider(names_from=Sector,values_from=value) %>% 
+  mutate(TOTAL_GEN=`Statistical differences`+`Main activity producer electricity plants`+`Autoproducer electricity plants`,
+         TOTAL_LOSS=`Electric boilers`+`Energy industry own use`+`Losses`) %>% 
+  transmute(Year,ELE=(TOTAL_GEN+TOTAL_LOSS)/TOTAL_GEN)
+
 
 # Power generation --------------------------------------------------------
 
@@ -387,7 +403,8 @@ SHR_SEC <- bind_rows(IEA_EB_SHR_ELE,SHR_SEC_2030,SHR_SEC_2050) %>%
   mutate(PRM=factor(PRM,levels=c('COL','COLX','OIL','OILX','GAS','GASX',
                                  'NUC','BMS','BMSX','HYD','GEO','WIN','PV'))) %>% 
   arrange(PRM) %>% 
-  pivot_wider(names_from=PRM,values_from=SHR_SEC)
+  pivot_wider(names_from=PRM,values_from=SHR_SEC) %>% 
+  filter(Year<=2020)
 
 
 # Example -industry sector
@@ -480,5 +497,9 @@ EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-54.3) # from GIO. value of 2
 # output ------------------------------------------------------------------
 
 SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP,COMFLOOR=SSP2_COMFLOOR,iIND=output_IND,iTRA=output_TRA,iCOM=output_COM,iRES=output_RES,
-                 sIND=filter(SHR_HIS,Sector=='Industry'))
+                 sIND=filter(SHR_HIS,Sector=='Industry'),
+                 sTRA=filter(SHR_HIS,Sector=='Transport'),
+                 sCOM=filter(SHR_HIS,Sector=='Commercial and public services'),
+                 sRES=filter(SHR_HIS,Sector=='Residential'),
+                 sELE=SHR_SEC)
 write.xlsx(SSP2_OUT, file = paste0(xdir,'data.xlsx'))
