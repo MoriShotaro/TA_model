@@ -387,7 +387,7 @@ SHR_SEC <- bind_rows(IEA_EB_SHR_ELE,SHR_SEC_2030,SHR_SEC_2050) %>%
 # Example -industry sector
 SEC_IND <- FIN_IND %>% 
   left_join(DIS_LOSS) %>% 
-  left_join(DEF_SEC) %>% 
+  left_join(SHR_SEC) %>% 
   mutate(SEP=FEC/DIS_LOSS*SHR_SEC)
   
 
