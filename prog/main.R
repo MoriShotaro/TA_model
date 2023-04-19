@@ -288,8 +288,8 @@ DEF_FIN <- data.frame(FIN=c('COL','OIL','GAS','BMS','ELE'),
 
 # Historical energy share
 SHR_HIS <- IEA_EB_SHR %>% 
-  mutate(SEC=FIN) %>% 
-  select(Sector,Year,FIN,SEC,SHR_FIN)
+  select(Sector,Year,FIN,SHR_FIN) %>% 
+  pivot_wider(names_from = FIN, values_from = SHR_FIN)
 
 # Share in 2030
 SHR_IND_2030 <- data.frame(Sector='Industry',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
@@ -473,5 +473,5 @@ EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-54.3) # from GIO. value of 2
 
 # output ------------------------------------------------------------------
 
-SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP)
+SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP,COMFLOOR=SSP2_COMFLOOR,iIND=output_IND,iTRA=output_TRA,iCOM=output_COM,iRES=output_RES)
 write.xlsx(SSP2_OUT, file = paste0(xdir,'data.xlsx'))
