@@ -364,7 +364,7 @@ SHR_SEC_2030 <- data.frame(Year=2030,
   bind_rows(data.frame(Year=2030,
                        PRM=c('COL','OIL','GAS','BMS'),
                        SEC=c('COL','OIL','GAS','BMS'),
-                       SHR_SEC=1))
+                       SHR_SEC=1)) 
 
 # Share in 2050
 SHR_SEC_2050 <- data.frame(Year=2050,
@@ -381,7 +381,13 @@ SHR_SEC_2050 <- data.frame(Year=2050,
 SHR_SEC <- bind_rows(IEA_EB_SHR_ELE,SHR_SEC_2030,SHR_SEC_2050) %>% 
   group_by(PRM,SEC) %>% 
   complete(Year=c(2010:2050)) %>% 
-  mutate(SHR_SEC=na_interpolation(SHR_SEC))
+  mutate(SHR_SEC=na_interpolation(SHR_SEC)) %>% 
+  ungroup() %>% 
+  filter(SEC=='ELE') %>% select(-SEC) %>% 
+  mutate(PRM=factor(PRM,levels=c('COL','COLX','OIL','OILX','GAS','GASX',
+                                 'NUC','BMS','BMSX','HYD','GEO','WIN','PV'))) %>% 
+  arrange(PRM) %>% 
+  pivot_wider(names_from=PRM,values_from=SHR_SEC)
 
 
 # Example -industry sector
