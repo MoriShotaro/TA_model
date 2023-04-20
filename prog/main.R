@@ -422,7 +422,7 @@ GEN_EFF <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>%
   filter(Year%in%2010:2020,Sector=='Memo: Efficiency of electricity only plants (main and auto) (%)') %>% 
   select(2,3,6,8:11,13) %>% 
   rename(COL=2,OIL=3,GAS=4,NUC=5,HYD=6,GEO=7,BMS=8) %>% 
-  mutate(HYD=1,WIN=1,PV=1,COLX=COL,OILX=OIL,GASX=GAS,BMSX=BMS) %>% 
+  mutate(HYD=100,WIN=100,PV=100,COLX=COL,OILX=OIL,GASX=GAS,BMSX=BMS) %>% 
   complete(Year=2010:2050) %>% 
   mutate(across(-Year,~na_locf(.))) %>% 
   pivot_longer(cols=-Year,names_to='PRM',values_to='GEN_EFF') %>% 
@@ -435,6 +435,12 @@ OTH_EFF <- data.frame(PRM=c('COL','OIL','GAS','BMS'),SEC=c('COL','OIL','GAS','BM
 
 PRM_EFF <- bind_rows(GEN_EFF,OTH_EFF)
 
+output_GENEFF <- GEN_EFF %>% 
+  select(-SEC) %>%
+  mutate(PRM=factor(PRM,levels=c('COL','COLX','OIL','OILX','GAS','GASX',
+                                 'NUC','BMS','BMSX','HYD','GEO','WIN','PV'))) %>% 
+  arrange(PRM) %>% 
+  pivot_wider(names_from=PRM,values_from=GEN_EFF)
 
 # Primary energy supply ---------------------------------------------------
 
@@ -497,6 +503,7 @@ EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-54.3) # from GIO. value of 2
 # output ------------------------------------------------------------------
 
 SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP,COMFLOOR=SSP2_COMFLOOR,iIND=output_IND,iTRA=output_TRA,iCOM=output_COM,iRES=output_RES,
+                 LOSS=output_LOSS,
                  sIND=filter(SHR_HIS,Sector=='Industry'),
                  sTRA=filter(SHR_HIS,Sector=='Transport'),
                  sCOM=filter(SHR_HIS,Sector=='Commercial and public services'),
