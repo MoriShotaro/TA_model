@@ -217,7 +217,7 @@ GEN_EFF <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>%
   filter(Year%in%2010:2020,Sector=='Memo: Efficiency of electricity only plants (main and auto) (%)') %>% 
   select(2,3,6,8:11,13) %>% 
   rename(COL=2,OIL=3,GAS=4,NUC=5,HYD=6,GEO=7,BMS=8) %>% 
-  mutate(HYD=100,WIN=100,PV=100,COLX=COL,OILX=OIL,GASX=GAS,BMSX=BMS) %>% 
+  mutate(HYD=100,WIN=100,PV=100,GEO=100,COLX=COL,OILX=OIL,GASX=GAS,BMSX=BMS) %>% 
   complete(Year=2010:2050) %>% 
   mutate(across(-Year,~na_locf(.))) %>% 
   pivot_longer(cols=-Year,names_to='PRM',values_to='GEN_EFF') %>% 
@@ -235,7 +235,7 @@ output_GENEFF <- GEN_EFF %>%
 
 EMF_PRM <- data.frame(PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
                             'NUC','BMS','BMSX','HYD','GEO','WIN','PV'),
-                      EMF=c(94.6,94.6*0.05,77.4,77.4*0.05,56.1,56.1*0.05,0,-100*0.95,0,0,0,0,0)) %>%  # !endogenous parameter
+                      EMF=c(94.6,94.6*0.05,77.4,77.4*0.05,56.1,56.1*0.05,0,0,-100*0.95,0,0,0,0)) %>%  # !endogenous parameter
   pivot_wider(names_from=PRM,values_from=EMF)
 
 
