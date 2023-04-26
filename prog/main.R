@@ -542,3 +542,4 @@ SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP,COMFLOOR=SSP2_COMFLOOR,
                  EMI_LULUCF=EMI_LULUCF,
                  IND_BF=output_IND_BF)
 write.xlsx(SSP2_OUT, file = paste0(xdir,'data.xlsx'))
+
