@@ -374,11 +374,6 @@ output_LOSS <- DIS_LOSS <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>%
 
 # Power generation --------------------------------------------------------
 
-# Historical energy share
-SHR_HIS <- IEA_EB_SHR %>% 
-  mutate(SEC=FIN) %>% 
-  select(Sector,Year,FIN,SEC,SHR_FIN)
-
 # Share in 2030
 SHR_SEC_2030 <- data.frame(Year=2030,
                       PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
