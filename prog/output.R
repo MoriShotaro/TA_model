@@ -116,32 +116,6 @@ SSP2_RESFLOOR <- rgdx.param(paste0(ddir,'SSP2_JPN.gdx'),'ind_t') %>%  # billion 
 IEA_EB_IND <- IEA_EB %>% 
   filter(Sector=='Industry')
 
-# Industry Final Energy Consumption in TJ
-df_IND <- full_join(IEA_EB_IND,SSP2_GDP) %>% 
-  replace_na(list(Sector='Industry')) %>% 
-  mutate(intensity=value/GDP) %>% 
-  select(-value) %>% 
-  mutate(intensity=na_locf(intensity)) %>% 
-  mutate(value_Lv1=GDP*intensity) %>% 
-  mutate(intensity_Lv2=case_when(Year%in%2010:2020 ~ intensity,
-                             Year==2050 ~ intensity*0.8),
-         intensity_Lv3=case_when(Year%in%2010:2020 ~ intensity,
-                             Year==2050 ~ intensity*0.5)) %>% 
-  mutate(intensity_Lv2=na_interpolation(intensity_Lv2),
-         intensity_Lv3=na_interpolation(intensity_Lv3)) %>% 
-  mutate(value_Lv2=GDP*intensity_Lv2,
-         value_Lv3=GDP*intensity_Lv3) %>% 
-  select(-starts_with('intensity_')) %>% 
-  pivot_longer(cols=c(value_Lv1,value_Lv2,value_Lv3),names_to='Sv',values_to='value',names_prefix='value_') %>% 
-  select(-GDP,-intensity)
-
-# Plot
-g <- df_IND %>% 
-  ggplot() +
-  geom_line(aes(x=Year,y=value,color=Sv)) +
-  scale_y_continuous(limits=c(0,NA))
-plot(g)
-
 # For output
 output_IND <- full_join(IEA_EB_IND,SSP2_GDP) %>% 
   replace_na(list(Sector='Industry')) %>% 
@@ -165,32 +139,6 @@ output_IND_BF <- IEA_EB %>%
 IEA_EB_TRA <- IEA_EB %>% 
   filter(Sector=='Transport')
 
-#  Future extension
-df_TRA <- full_join(IEA_EB_TRA,SSP2_POP) %>%
-  replace_na(list(Sector='Transport')) %>%
-  mutate(intensity=value/POP) %>% 
-  select(-value) %>% 
-  mutate(intensity=na_locf(intensity)) %>% 
-  mutate(value_Lv1=POP*intensity) %>% 
-  mutate(intensity_Lv2=case_when(Year%in%2010:2020 ~ intensity,
-                                 Year==2050 ~ intensity*0.8),
-         intensity_Lv3=case_when(Year%in%2010:2020 ~ intensity,
-                                 Year==2050 ~ intensity*0.5)) %>% 
-  mutate(intensity_Lv2=na_interpolation(intensity_Lv2),
-         intensity_Lv3=na_interpolation(intensity_Lv3)) %>% 
-  mutate(value_Lv2=POP*intensity_Lv2,
-         value_Lv3=POP*intensity_Lv3) %>% 
-  select(-starts_with('intensity_')) %>% 
-  pivot_longer(cols=c(value_Lv1,value_Lv2,value_Lv3),names_to='Sv',values_to='value',names_prefix='value_') %>% 
-  select(-POP,-intensity)
-
-# Plot
-g <- df_TRA %>% 
-  ggplot() +
-  geom_line(aes(x=Year,y=value,color=Sv)) +
-  scale_y_continuous(limits=c(0,NA))
-plot(g)
-
 # For output
 output_TRA <- full_join(IEA_EB_TRA,SSP2_POP) %>% 
   replace_na(list(Sector='Transport')) %>% 
@@ -204,34 +152,6 @@ output_TRA <- full_join(IEA_EB_TRA,SSP2_POP) %>%
 # IEA Energy Balance -Commercial final energy consumption
 IEA_EB_COM <- IEA_EB %>% 
   filter(Sector=='Commercial and public services')
-
-# Future extension
-df_COM <- full_join(IEA_EB_COM,SSP2_COMFLOOR) %>%
-  replace_na(list(Sector='Commercial and public services')) %>%
-  transmute(Sector,Year,value=value/COMFLOOR) %>% 
-  full_join(SSP2_GDP) %>% 
-  mutate(intensity=value/GDP) %>% 
-  select(-value) %>% 
-  mutate(intensity=na_locf(intensity)) %>% 
-  mutate(value_Lv1=GDP*intensity) %>% 
-  mutate(intensity_Lv2=case_when(Year%in%2010:2020 ~ intensity,
-                                 Year==2050 ~ intensity*0.8),
-         intensity_Lv3=case_when(Year%in%2010:2020 ~ intensity,
-                                 Year==2050 ~ intensity*0.5)) %>% 
-  mutate(intensity_Lv2=na_interpolation(intensity_Lv2),
-         intensity_Lv3=na_interpolation(intensity_Lv3)) %>% 
-  mutate(value_Lv2=GDP*intensity_Lv2,
-         value_Lv3=GDP*intensity_Lv3) %>% 
-  select(-starts_with('intensity_')) %>% 
-  pivot_longer(cols=c(value_Lv1,value_Lv2,value_Lv3),names_to='Sv',values_to='value',names_prefix='value_') %>% 
-  select(-GDP,-intensity)
-  
-# Plot
-g <- df_COM %>% 
-  ggplot() +
-  geom_line(aes(x=Year,y=value,color=Sv)) +
-  scale_y_continuous(limits=c(0,NA))
-plot(g)
 
 # For output
 output_COM <- full_join(IEA_EB_COM,SSP2_GDP) %>% 
@@ -247,42 +167,11 @@ output_COM <- full_join(IEA_EB_COM,SSP2_GDP) %>%
 IEA_EB_RES <- IEA_EB %>% 
   filter(Sector=='Residential')
 
-# Future extension
-df_RES <- full_join(IEA_EB_RES,SSP2_RESFLOOR) %>% 
-  replace_na(list(Sector='Residential')) %>%
-  mutate(intensity=value/RESFLOOR) %>% 
-  select(-value) %>% 
-  mutate(intensity=na_locf(intensity)) %>% 
-  mutate(value_Lv1=RESFLOOR*intensity) %>% 
-  mutate(intensity_Lv2=case_when(Year%in%2010:2020 ~ intensity,
-                                 Year==2050 ~ intensity*0.8),
-         intensity_Lv3=case_when(Year%in%2010:2020 ~ intensity,
-                                 Year==2050 ~ intensity*0.5)) %>% 
-  mutate(intensity_Lv2=na_interpolation(intensity_Lv2),
-         intensity_Lv3=na_interpolation(intensity_Lv3)) %>% 
-  mutate(value_Lv2=RESFLOOR*intensity_Lv2,
-         value_Lv3=RESFLOOR*intensity_Lv3) %>% 
-  select(-starts_with('intensity_')) %>% 
-  pivot_longer(cols=c(value_Lv1,value_Lv2,value_Lv3),names_to='Sv',values_to='value',names_prefix='value_') %>% 
-  select(-RESFLOOR,-intensity)
-
-# Plot
-g <- df_RES %>% 
-  ggplot() +
-  geom_line(aes(x=Year,y=value,color=Sv)) +
-  scale_y_continuous(limits=c(0,NA))
-plot(g)
-
 # For output
 output_RES <- full_join(IEA_EB_RES,SSP2_POP) %>% 
   replace_na(list(Sector='Residential')) %>% 
   transmute(Sector,Year,intensity=value/POP) %>% 
   drop_na()
-
-# Summarise ---------------------------------------------------------------
-
-IEA_EB_DEM <- bind_rows(df_IND,df_TRA,df_COM,df_RES)
-
 
 
 ### Energy sector ###
@@ -300,63 +189,10 @@ SHR_HIS <- IEA_EB_SHR %>%
   select(Sector,Year,FIN,SHR_FIN) %>% 
   pivot_wider(names_from = FIN, values_from = SHR_FIN)
 
-# Share in 2030
-SHR_IND_2030 <- data.frame(Sector='Industry',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_TRA_2030 <- data.frame(Sector='Transport',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_COM_2030 <- data.frame(Sector='Commercial and public services',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_RES_2030 <- data.frame(Sector='Residential',Year=2030,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_2030 <- bind_rows(SHR_IND_2030,SHR_TRA_2030,SHR_COM_2030,SHR_RES_2030)
-
-# Share in 2050
-SHR_IND_2050 <- data.frame(Sector='Industry',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_TRA_2050 <- data.frame(Sector='Transport',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_COM_2050 <- data.frame(Sector='Commercial and public services',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_RES_2050 <- data.frame(Sector='Residential',Year=2050,DEF_FIN,SHR_FIN=c(0.2,0.2,0.4,0.1,0.1)) # ! exogenous parameter
-SHR_2050 <- bind_rows(SHR_IND_2050,SHR_TRA_2050,SHR_COM_2050,SHR_RES_2050)
-
-# Interpolation share
-SHR_FIN <- bind_rows(SHR_HIS,SHR_2030,SHR_2050) %>% 
-  group_by(Sector,FIN,SEC) %>% 
-  complete(Year=c(2010:2050)) %>% 
-  mutate(SHR_FIN=na_interpolation(SHR_FIN))
-
-# Example -industry sector
-FIN_IND <- df_IND %>% 
-  full_join(SHR_FIN %>% filter(Sector=='Industry')) %>% 
-  mutate(FEC=value*SHR_FIN) %>% 
-  select(-value,-SHR_FIN)
-
-g <- FIN_IND %>% 
-  ggplot() +
-  geom_area(aes(x=Year,y=FEC,fill=FIN)) +
-  scale_fill_brewer(palette='Set3') +
-  facet_wrap(vars(Sv))
-plot(g)
-
 
 # Distribution loss -------------------------------------------------------
 
-DIS_LOSS <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
-  slice(-1) %>% rename(Sector=1,Year=2) %>% 
-  mutate(across(-1,~as.numeric(.))) %>% 
-  filter(Year%in%2010:2020) %>% 
-  select(Sector,Year,Electricity) %>% rename(value=Electricity) %>% 
-  filter(Sector%in%c('Statistical differences',
-                     'Main activity producer electricity plants',
-                     'Autoproducer electricity plants',
-                     'Electric boilers',
-                     'Energy industry own use',
-                     'Losses')) %>% 
-  pivot_wider(names_from=Sector,values_from=value) %>% 
-  mutate(TOTAL_GEN=`Statistical differences`+`Main activity producer electricity plants`+`Autoproducer electricity plants`,
-         TOTAL_LOSS=`Electric boilers`+`Energy industry own use`+`Losses`) %>% 
-  transmute(Year,ELE=(TOTAL_GEN+TOTAL_LOSS)/TOTAL_GEN) %>% 
-  mutate(COL=1,OIL=1,GAS=1,BMS=1) %>% 
-  complete(Year=2010:2050) %>% 
-  mutate(across(-Year,~na_locf(.))) %>% 
-  pivot_longer(cols=-Year,names_to='FIN',values_to='DIS_LOSS')
-
-output_LOSS <- DIS_LOSS <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
+output_LOSS <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
   slice(-1) %>% rename(Sector=1,Year=2) %>% 
   mutate(across(-1,~as.numeric(.))) %>% 
   filter(Year%in%2010:2020) %>% 
@@ -373,51 +209,6 @@ output_LOSS <- DIS_LOSS <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>%
   transmute(Year,ELE=(TOTAL_GEN+TOTAL_LOSS)/TOTAL_GEN)
 
 
-# Power generation --------------------------------------------------------
-
-# Share in 2030
-SHR_SEC_2030 <- data.frame(Year=2030,
-                      PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
-                            'NUC','BMS','BMSX','HYD','GEO','WIN','PV'),
-                      SEC=c('ELE'),
-                      SHR_SEC=c(0.1,0,0.1,0,0.3,0,0.1,0,0,0.1,0,0.2,0.1)) %>%   # ! exogenous parameter
-  bind_rows(data.frame(Year=2030,
-                       PRM=c('COL','OIL','GAS','BMS'),
-                       SEC=c('COL','OIL','GAS','BMS'),
-                       SHR_SEC=1)) 
-
-# Share in 2050
-SHR_SEC_2050 <- data.frame(Year=2050,
-                      PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
-                            'NUC','BMS','BMSX','HYD','GEO','WIN','PV'),
-                      SEC=c('ELE'),
-                      SHR_SEC=c(0.1,0,0.1,0,0.3,0,0.1,0,0,0.1,0,0.2,0.1)) %>%   # ! exogenous parameter
-  bind_rows(data.frame(Year=2050,
-                       PRM=c('COL','OIL','GAS','BMS'),
-                       SEC=c('COL','OIL','GAS','BMS'),
-                       SHR_SEC=1))
-
-# Interpolation share
-SHR_SEC <- bind_rows(IEA_EB_SHR_ELE,SHR_SEC_2030,SHR_SEC_2050) %>% 
-  group_by(PRM,SEC) %>% 
-  complete(Year=c(2010:2050)) %>% 
-  mutate(SHR_SEC=na_interpolation(SHR_SEC)) %>% 
-  ungroup() %>% 
-  filter(SEC=='ELE') %>% select(-SEC) %>% 
-  mutate(PRM=factor(PRM,levels=c('COL','COLX','OIL','OILX','GAS','GASX',
-                                 'NUC','BMS','BMSX','HYD','GEO','WIN','PV'))) %>% 
-  arrange(PRM) %>% 
-  pivot_wider(names_from=PRM,values_from=SHR_SEC) %>% 
-  filter(Year<=2020)
-
-
-# Example -industry sector
-SEC_IND <- FIN_IND %>% 
-  left_join(DIS_LOSS) %>% 
-  left_join(SHR_SEC) %>% 
-  mutate(SEP=FEC/DIS_LOSS*SHR_SEC)
-  
-
 # Power generation efficiency ---------------------------------------------
 
 GEN_EFF <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>% 
@@ -432,26 +223,12 @@ GEN_EFF <- read_csv(paste0(ddir,'IEA_EB_JP.csv')) %>%
   pivot_longer(cols=-Year,names_to='PRM',values_to='GEN_EFF') %>% 
   mutate(GEN_EFF=GEN_EFF/100,SEC='ELE')
 
-OTH_EFF <- data.frame(PRM=c('COL','OIL','GAS','BMS'),SEC=c('COL','OIL','GAS','BMS'),Year=2010) %>% 
-  group_by(PRM,SEC) %>% 
-  complete(Year=2010:2050) %>% 
-  mutate(GEN_EFF=1)
-
-PRM_EFF <- bind_rows(GEN_EFF,OTH_EFF)
-
 output_GENEFF <- GEN_EFF %>% 
   select(-SEC) %>%
   mutate(PRM=factor(PRM,levels=c('COL','COLX','OIL','OILX','GAS','GASX',
                                  'NUC','BMS','BMSX','HYD','GEO','WIN','PV'))) %>% 
   arrange(PRM) %>% 
   pivot_wider(names_from=PRM,values_from=GEN_EFF)
-
-# Primary energy supply ---------------------------------------------------
-
-# Example -industry sector
-PRM_IND <- SEC_IND %>% 
-  left_join(PRM_EFF) %>% 
-  mutate(PES=SEP/GEN_EFF)
 
 
 # Emission factor ---------------------------------------------------------
@@ -463,12 +240,6 @@ EMF_PRM <- data.frame(PRM=c('COL','COLX','OIL','OILX','GAS','GASX',
 
 
 # Emission  ---------------------------------------------------------------
-
-# Example -industry sector
-EMI_IND <- PRM_IND %>% 
-  left_join(EMF_PRM) %>% 
-  mutate(EMI=PES*EMF/1000)
-
 
 ### Non-energy sector ###
 
@@ -535,7 +306,7 @@ SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP,COMFLOOR=SSP2_COMFLOOR,
                  sTRA=filter(SHR_HIS,Sector=='Transport'),
                  sCOM=filter(SHR_HIS,Sector=='Commercial and public services'),
                  sRES=filter(SHR_HIS,Sector=='Residential'),
-                 sELE=SHR_SEC,
+                 sELE=SHR_HIS,
                  eELE=output_GENEFF,
                  EMF=EMF_PRM,
                  EMI_CEM=output_CEM,
