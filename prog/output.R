@@ -297,6 +297,44 @@ output_WASTE <- EMI_WASTE0 %>%
 EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-54.3)  # from GIO. value of 2020. Mt-CO2/yr
 
 
+### Power generation cost (LCOE) ###
+
+output_LCOE <- read_xlsx(paste0(ddir,'cost_wg_20210908_03.xlsx'),sheet=1) %>% # NEDO,2021. exclude social and policy cost (eg. carbon price)
+  slice(11:33) %>% select(1,19:21) %>%
+  rename(PRM=1,CAPEX=2,OPEX=3,FUEL=4) %>% 
+  mutate(across(2:4,~as.numeric(.))) %>% 
+  mutate(value=CAPEX+OPEX+FUEL) %>% 
+  select(PRM,value) %>% 
+  mutate(PRM=recode(PRM,'原子力'='NUC',
+                    '石炭火力'='COL',
+                    'LNG火力'='GAS',
+                    '石油火力'='OIL',
+                    '太陽光（事業用）'='PV',
+                    '陸上風力'='WIN',
+                    '中水力'='HYD',
+                    '地熱'='GEO',
+                    'バイオマス（木質専焼）'='BMS',
+                    'CO2分離回収型石炭火力'='COLX',
+                    'CO2分離回収型LNG火力'='GASX')) %>% 
+  filter(PRM%in%c('NUC','COL','GAS','OIL','PV','WIN','HYD','GEO','BMS','COLX','GASX')) %>% 
+  mutate(value=case_when(PRM=='COLX'~value+2.1,
+                         PRM=='GASX'~value+0.9,
+                         TRUE~value)) %>%  # add CO2 transport and storage cost. NEDO,2021
+  bind_rows(data.frame(PRM=c('OILX','BMSX'),
+                       value=c(21.1+(11.3-8.5)*77.4/56.1,28.1+(11.3-8.5)*100/56.1))) %>% 
+  mutate(PRM=factor(PRM,levels=c('COL','COLX','OIL','OILX','GAS','GASX',
+                                 'NUC','BMS','BMSX','HYD','GEO','WIN','PV'))) %>% 
+  arrange(PRM)
+
+
+### Energy Price ###  
+
+output_EPT <- read_csv(paste0(ddir,'IEA_EPT_JP.csv')) %>% # IEA Energy Price and Tax. unit:JPY/unit
+  slice(34,44) %>% select(1,4,12,15) %>% mutate(across(everything(),~as.numeric(.))) %>%
+  rename(Year=1,OIL=2,GAS=3,ELE=4) %>% 
+  mutate(OIL=OIL/1000/8718/4.2*10^6,GAS=GAS/3.6,ELE=ELE/3.6) %>%  # unit conversion to JPY/GJ
+  mutate(COL=)
+
 # output ------------------------------------------------------------------
 
 SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP,COMFLOOR=SSP2_COMFLOOR,
@@ -306,12 +344,13 @@ SSP2_OUT <- list(GDP=SSP2_GDP,POP=SSP2_POP,COMFLOOR=SSP2_COMFLOOR,
                  sTRA=filter(SHR_HIS,Sector=='Transport'),
                  sCOM=filter(SHR_HIS,Sector=='Commercial and public services'),
                  sRES=filter(SHR_HIS,Sector=='Residential'),
-                 sELE=SHR_SEC,
+                 sELE=IEA_EB_SHR_ELE,
                  eELE=output_GENEFF,
                  EMF=EMF_PRM,
                  EMI_CEM=output_CEM,
                  EMI_WASTE=output_WASTE,
                  EMI_LULUCF=EMI_LULUCF,
-                 IND_BF=output_IND_BF)
+                 IND_BF=output_IND_BF,
+                 LCOE=output_LCOE)
 write.xlsx(SSP2_OUT, file = paste0(xdir,'data.xlsx'))
 

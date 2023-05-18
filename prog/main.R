@@ -486,7 +486,7 @@ EMI_CEM <- rgdx.param(paste0(ddir,'emissions_JPN.gdx'),'emi_jpn') %>%
   mutate(intensity=na_locf(intensity)) %>% 
   mutate(EMI_CEM=POP*intensity)
 
-output_CEM <- EMI_CEM <- rgdx.param(paste0(ddir,'emissions_JPN.gdx'),'emi_jpn') %>% 
+output_CEM <- rgdx.param(paste0(ddir,'emissions_JPN.gdx'),'emi_jpn') %>% 
   filter(VAR=='Emi_CO2_Ene_Dem_Ind_Cem') %>% 
   select(Y,emi_jpn) %>% 
   rename(Year=Y,EMI_CEM=emi_jpn) %>% 
