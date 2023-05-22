@@ -294,7 +294,7 @@ output_WASTE <- EMI_WASTE0 %>%
   drop_na()
 
 # LULUCF sector
-EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-54.3)  # from GIO. value of 2020. Mt-CO2/yr
+EMI_LULUCF <- data.frame(Year=2010:2050,EMI_LULUCF=-46.0)  # from GIO. value of 2020. Mt-CO2/yr
 
 
 ### Power generation cost (LCOE) ###
