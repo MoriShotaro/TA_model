@@ -142,6 +142,12 @@ g <- df_IND %>%
   scale_y_continuous(limits=c(0,NA))
 plot(g)
 
+g <- df_IND %>% 
+  ggplot() +
+  geom_line(aes(x=Year,y=value,color=Sv)) +
+  scale_y_continuous(limits=c(0,NA))
+plot(g)
+
 # For output
 output_IND <- full_join(IEA_EB_IND,SSP2_GDP) %>% 
   replace_na(list(Sector='Industry')) %>% 
