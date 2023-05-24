@@ -141,9 +141,9 @@ IEA_EB_TRA <- IEA_EB %>%
 
 # For output
 output_TRA <- full_join(IEA_EB_TRA,SSP2_POP) %>% 
-  replace_na(list(Sector='Transport')) %>% 
-  mutate(intensity=value/POP) %>% 
-  select(-value,-POP) %>% 
+  full_join(SSP2_GDP) %>%
+  replace_na(list(Sector='Transport')) %>%
+  transmute(Sector,Year,intensity=value/POP/GDP) %>%
   drop_na()
 
 
@@ -328,12 +328,21 @@ output_LCOE <- read_xlsx(paste0(ddir,'cost_wg_20210908_03.xlsx'),sheet=1) %>% # 
 
 
 ### Energy Price ###  
+BMS_EPT_JP <- read_csv(paste0(ddir,'BiomassPrice.csv') ,locale = locale(encoding = "CP932")) %>%
+  slice(seq(9,17,1)) %>% select(3,10,11) %>%
+  rename(Region=1,amount=2,Price=3) %>% 
+  mutate(amount=as.numeric(amount),Price=as.numeric(Price)) %>% 
+  bind_rows(data.frame(Region='total',
+                       amount=sum(.$amount),
+                       Price=sum(.$Price))) %>% 
+  filter(Region=='total') %>% 
+  mutate(BMS=Price*1000/amount/18.3)
 
 output_EPT <- read_csv(paste0(ddir,'IEA_EPT_JP.csv')) %>% # IEA Energy Price and Tax. unit:JPY/unit
   slice(34,44) %>% select(1,4,12,15) %>% mutate(across(everything(),~as.numeric(.))) %>%
   rename(Year=1,OIL=2,GAS=3,ELE=4) %>% 
   mutate(OIL=OIL/1000/8718/4.2*10^6,GAS=GAS/3.6,ELE=ELE/3.6) %>%  # unit conversion to JPY/GJ
-  mutate(COL=)
+  mutate(COL=2.18*10^-3/4.2*10^6,BMS=BMS_EPT_JP$BMS)
 
 # output ------------------------------------------------------------------
 
